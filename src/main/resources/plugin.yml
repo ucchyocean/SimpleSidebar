@@ -1,0 +1,22 @@
+name: SimpleSidebar
+main: com.github.ucchyocean.sidebar.SimpleSidebar
+version: 0.1.0
+author: ucchy
+description: シンプルなサイドバー設定プラグイン
+
+commands:
+  sidebar:
+    description: シンプルサイドバーのコマンド
+    aliases: [side, simplesidebar, ss]
+    usage: |
+           /<command> title (title) - サイドバーのタイトルを設定する。
+           /<command> set (name) (point) - サイドバー項目のスコアを設定する。
+           /<command> add (name) (amount) - サイドバー項目のスコアを増減する。
+           /<command> remove (name) - サイドバー項目を削除する。
+           /<command> removeall - サイドバーを削除する。
+    permission: simplesidebar
+    permission-message: パーミッション "<permission>" が無いため実行できません。
+permissions:
+  simplesidebar:
+    description: シンプルサイドバーのパーミッション
+    default: op
