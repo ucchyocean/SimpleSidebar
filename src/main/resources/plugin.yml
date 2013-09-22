@@ -1,6 +1,6 @@
 name: SimpleSidebar
 main: com.github.ucchyocean.sidebar.SimpleSidebar
-version: 0.1.0
+version: 0.2.0
 author: ucchy
 description: シンプルなサイドバー設定プラグイン
 
@@ -16,6 +16,7 @@ commands:
            /<command> removeall - サイドバーを削除する。
     permission: simplesidebar
     permission-message: パーミッション "<permission>" が無いため実行できません。
+
 permissions:
   simplesidebar:
     description: シンプルサイドバーのパーミッション

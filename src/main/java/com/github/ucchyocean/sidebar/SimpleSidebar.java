@@ -1,14 +1,14 @@
-/*
- * @author     ucchy
- * @license    LGPLv3
- * @copyright  Copyright ucchy 2013
- */
 package com.github.ucchyocean.sidebar;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scoreboard.DisplaySlot;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Scoreboard;
 
 /**
  * シンプルサイドバープラグイン
@@ -16,12 +16,10 @@ import org.bukkit.plugin.java.JavaPlugin;
  */
 public class SimpleSidebar extends JavaPlugin {
 
-    private static final String PREFIX = "[SS]";
-    private static final String PREERR = ChatColor.RED + "[SS]";
+    private static final String SIDEBAR_NAME = "simplesidebar";
     
-    private static final String REGEX_PARSEINT_CHECK = "-?[0-9]{1,9}";
-    
-    private SidebarDisplay display;
+    private Scoreboard scoreboard;
+    private Objective objective;
 
     /**
      * サーバー開始時に呼ばれるメソッド
@@ -29,7 +27,10 @@ public class SimpleSidebar extends JavaPlugin {
      */
     @Override
     public void onEnable() {
-        display = new SidebarDisplay(getServer());
+        scoreboard = getServer().getScoreboardManager().getMainScoreboard();
+        objective = scoreboard.registerNewObjective(SIDEBAR_NAME, "dummy");
+        objective.setDisplayName("Sidebar");
+        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
     }
     
     /**
@@ -38,7 +39,7 @@ public class SimpleSidebar extends JavaPlugin {
      */
     @Override
     public void onDisable() {
-        display.unregister();
+        objective.unregister();
     }
 
     /**
@@ -50,91 +51,145 @@ public class SimpleSidebar extends JavaPlugin {
             CommandSender sender, Command command,
             String label, String[] args) {
 
-        // 引数0はここで終わる
-        if ( args.length == 0 ) {
-            return false;
-        }
-        
-        // removeall が指定されている場合
-        if ( args[0].equalsIgnoreCase("removeall") ) {
-
-            display.unregister();
-            sender.sendMessage(PREFIX + 
-                    "サイドバーを削除しました。");
-            return true;
-            
-        }
-        
-        // 以降は引数2つ以上必須なので、引数1つの場合はここで終わる。
-        if ( args.length <= 1 ) {
-            return false;
-        }
-        
-        if ( args[0].equalsIgnoreCase("title") ) {
+        if ( args.length >= 2 && args[0].equalsIgnoreCase("title") ) {
             
             String title = replaceColorCode(args[1]);
             
             if ( title.length() > 32 ) {
-                sender.sendMessage(PREERR + 
-                        "タイトルは32文字以下にしてください。");
+                sender.sendMessage("タイトルは32文字以下にしてください。");
                 return true;
             }
             
-            display.setTitle(title);
-            sender.sendMessage(PREFIX + 
-                    "タイトルを\"" + title + "\"に設定しました。");
+            setTitle(title);
+            sender.sendMessage("タイトルを\"" + title + "\"に設定しました。");
             return true;
             
-        } else if ( args[0].equalsIgnoreCase("set") ) {
+        } else if ( args.length >= 3 && args[0].equalsIgnoreCase("set") ) {
             
             String name = replaceColorCode(args[1]);
             
             if ( name.length() > 16 ) {
-                sender.sendMessage(PREERR + 
-                        "項目名は16文字以下にしてください。");
+                sender.sendMessage("項目名は16文字以下にしてください。");
                 return true;
             }
             
-            int point = 0;
-            if ( args.length >= 3 && args[2].matches(REGEX_PARSEINT_CHECK) ) {
-                point = Integer.parseInt(args[2]);
+            if ( !tryParseInt(args[2]) ) {
+                sender.sendMessage("コマンドの指定形式が正しくありません。");
+                sender.sendMessage("Usage: /" + label + " set (name) (point)");
+                return true;
             }
-            display.setScore(name, point);
-            sender.sendMessage(PREFIX + 
-                    "項目\"" + name + "\"のスコアを設定しました。");
+            
+            int point = Integer.parseInt(args[2]);
+            setScore(name, point);
+            sender.sendMessage("項目\"" + name + "\"のスコアを設定しました。");
             return true;
             
-        } else if ( args[0].equalsIgnoreCase("add") ) {
+        } else if ( args.length >= 3 && args[0].equalsIgnoreCase("add") ) {
             
             String name = replaceColorCode(args[1]);
             
             if ( name.length() > 16 ) {
-                sender.sendMessage(PREERR + 
-                        "項目名は16文字以下にしてください。");
+                sender.sendMessage("項目名は16文字以下にしてください。");
                 return true;
             }
             
-            int amount = 0;
-            if ( args.length >= 3 && args[2].matches(REGEX_PARSEINT_CHECK) ) {
-                amount = Integer.parseInt(args[2]);
+            if ( !tryParseInt(args[2]) ) {
+                sender.sendMessage("コマンドの指定形式が正しくありません。");
+                sender.sendMessage("Usage: /" + label + " add (name) (point)");
+                return true;
             }
-            display.addScore(name, amount);
-            sender.sendMessage(PREFIX + 
-                    "項目\"" + name + "\"のスコアを設定しました。");
+            
+            int amount = Integer.parseInt(args[2]);
+            addScore(name, amount);
+            sender.sendMessage("項目\"" + name + "\"のスコアを設定しました。");
             return true;
             
-        } else if ( args[0].equalsIgnoreCase("remove") ) {
+        } else if ( args.length >= 2 && args[0].equalsIgnoreCase("remove") ) {
             
             String name = replaceColorCode(args[1]);
             
-            display.removeScore(name);
-            sender.sendMessage(PREFIX + 
-                    "項目\"" + name + "\"のスコアを削除しました。");
+            removeScore(name);
+            sender.sendMessage("項目\"" + name + "\"のスコアを削除しました。");
+            return true;
+            
+        } else if ( args.length >= 1 && args[0].equalsIgnoreCase("removeall") ) {
+
+            removeAllScores();
+            sender.sendMessage("全ての項目のスコアを削除しました。");
             return true;
             
         }
         
         return false;
+    }
+    
+    /**
+     * サイドバーのタイトルを設定する。
+     * @param title タイトル（必ず32文字以下にすること）
+     */
+    public void setTitle(String title) {
+        
+        objective.setDisplayName(title);
+    }
+    
+    /**
+     * サイドバーの項目のスコアを設定する。
+     * 項目が無い場合は、項目を追加して設定する。
+     * ただし、全ての項目に0ポイントを設定すると、サイドバーが非表示になってしまうので注意。
+     * @param name 項目名（必ず16文字以下にすること）
+     * @param point ポイント
+     */
+    public void setScore(String name, int point) {
+        
+        OfflinePlayer item = Bukkit.getOfflinePlayer(name);
+        objective.getScore(item).setScore(point);
+    }
+    
+    /**
+     * サイドバーの項目のスコアを取得する。
+     * 項目が無い場合は、0が返される。
+     * @param name 項目名
+     * @return ポイント
+     */
+    public int getScore(String name) {
+        
+        OfflinePlayer item = Bukkit.getOfflinePlayer(name);
+        return objective.getScore(item).getScore();
+    }
+    
+    /**
+     * サイドバーの項目のスコアを増減する。
+     * 項目が無い場合は、項目を追加して設定する。
+     * ただし、全ての項目に0ポイントを設定すると、サイドバーが非表示になってしまうので注意。
+     * @param name 項目名（必ず16文字以下にすること）
+     * @param amount 増減するポイント
+     */
+    public void addScore(String name, int amount) {
+        
+        int point = getScore(name);
+        setScore(name, point + amount);
+    }
+    
+    /**
+     * サイドバーの項目のスコアを削除する。
+     * @param name 項目名
+     */
+    public void removeScore(String name) {
+        
+        OfflinePlayer item = Bukkit.getOfflinePlayer(name);
+        objective.getScore(item).setScore(0);
+        scoreboard.resetScores(item);
+    }
+    
+    /**
+     * 全ての得点をリセットして、サイドバーを非表示にする。
+     */
+    public void removeAllScores() {
+        
+        for ( OfflinePlayer item : scoreboard.getPlayers() ) {
+            objective.getScore(item).setScore(0);
+            scoreboard.resetScores(item);
+        }
     }
 
     /**
@@ -144,6 +199,22 @@ public class SimpleSidebar extends JavaPlugin {
      */
     private static String replaceColorCode(String source) {
 
-        return source.replaceAll("&([0-9a-fk-or])", "\u00A7$1");
+        if ( source == null ) {
+            return null;
+        }
+        return ChatColor.translateAlternateColorCodes('&', source);
+    }
+
+    /**
+     * 指定された文字列が int型に変換可能かどうかをチェックする
+     * @param source 文字列
+     * @return 変換可能かどうか
+     */
+    private static boolean tryParseInt(String source) {
+        
+        if ( source == null ) {
+            return false;
+        }
+        return source.matches("-?[0-9]{1,9}");
     }
 }
